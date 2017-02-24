@@ -279,7 +279,7 @@ function initiate() {
             }
         };
         var used_errcodes = {};
-        if (!addWarningCustom) {
+        if (addWarningCustom == undefined) {
             // This var will be visible to the code below.
             var rda = $('#result_display_area');
             rda.html('');
@@ -289,7 +289,7 @@ function initiate() {
             if(position === null || position === undefined){
                 return fragment;
             }
-            radius = radius ? radius : 5;
+            radius = radius != undefined ? radius : 5;
             var left = Math.max(0, position-5);
             var right = Math.min(fragment.length-1, position+5);
             if (isWordSymbol(fragment.substr(left, 1))) {
@@ -337,22 +337,22 @@ function initiate() {
         }
 
         function addWarning(errorCode, extraInfo, codeFragment, lineNumber){
-            if (codeFragment){
+            if (codeFragment != undefined){
                 codeFragment = '<br><div class="badge"'
-                        + (lineNumber ? ' onclick="hlAceLine(' + lineNumber + ')"': '')
+                        + (lineNumber != undefined ? ' onclick="hlAceLine(' + lineNumber + ')"': '')
                         +'>Подозрительный фрагмент: <code>…' + codeFragment + '…</code>'
-                        + (lineNumber ? ' (строка ' + lineNumber + ' в редакторе)' : '')
+                        + (lineNumber != undefined ? ' (строка ' + lineNumber + ' в редакторе)' : '')
                         + '</div>';
             }
 
-            if(!used_errcodes[errorCode]) {
+            if(used_errcodes[errorCode] == undefined) {
                 var severity = errors[errorCode].severity.toString();
-                rda.html(rda.html() + '<div class="well well-sm severity' + severity + '" id="' + errorCode + '" data-severity="' + severity +'">' + (extraInfo ? extraInfo : errors[errorCode].msg) + '</div>');
+                rda.html(rda.html() + '<div class="well well-sm severity' + severity + '" id="' + errorCode + '" data-severity="' + severity +'">' + (extraInfo != undefined ? extraInfo : errors[errorCode].msg) + '</div>');
                 used_errcodes[errorCode] = $('#' + errorCode);
             }
             var errorMessage = used_errcodes[errorCode];
 
-            if (codeFragment) {
+            if (codeFragment != undefined) {
                 errorMessage.html(errorMessage.html() + codeFragment);
             }
         }
@@ -839,10 +839,10 @@ function initiate() {
     function checkLatexCodeExport(latexString) {
         var used_errcodes = {};
         function addWarning(errorCode, extraInfo, codeFragment, lineNumber) {
-            if (!used_errcodes[errorCode]) {
+            if (used_errcodes[errorCode] == undefined) {
                 used_errcodes[errorCode] = {
                     severity: this.errors[errorCode].severity,
-                    extraInfo: (extraInfo ? extraInfo : this.errors[errorCode].msg),
+                    extraInfo: (extraInfo != undefined ? extraInfo : this.errors[errorCode].msg),
                     codeFragments: []
                 };
             }
