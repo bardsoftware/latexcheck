@@ -399,6 +399,8 @@ function initiate() {
             }
         }
 
+        /* Delete all comments */
+        latexString = latexString.replace(/%.*(?=(\n|$))/g, '');
 
         /* STAGE: Check if there are no teacher fixmes left */
         var badPos = latexString.search(/\\fix\{/);
@@ -489,7 +491,7 @@ function initiate() {
         }
 
         /* STAGE: check if math formulae are not split without necessity */
-        var badPos = latexString.search(/(\$|\\\))\s*(,|=|\+|-)?\s*(\$|\\\()/);
+        var badPos = latexString.search(/(\$(?!\$)|\\\)|\$\$)\s*(,|=|\+|-)?\s*(\$(?!\$)|\\\()/);
         if ( badPos >= 0) {
             addWarning('UNNECESSARY_FORMULA_BREAK', null, extractSnippet(latexString, badPos, 10), findLine(badPos));
         }
@@ -541,7 +543,7 @@ function initiate() {
         }
 
         /* STAGE: split into text and math blocks */
-        var fragments = latexString.split(/(\$\$|\\\[|\\]|\\\(|\\\)|\$|\\(?:begin|end)\{(?:equation|align|gather|eqnarray|multline|flalign|alignat|math)\*?})/);
+        var fragments = latexString.split(/(\$\$|\\\[|\\]|\\\(|\\\)|\$(?!\$)|\\(?:begin|end)\{(?:equation|align|gather|eqnarray|multline|flalign|alignat|math)\*?})/);
         var textFragments = [];
         var mathFragments = [];
         var mathFragmentTypes = [];
@@ -555,26 +557,27 @@ function initiate() {
             }
         }
 
-
         /* STAGE: check for neighbouring formulas */
         for (var i = 1; i < textFragments.length-1; ++i) {
             if (textFragments[i].match(/^\s*$/)) {
                 addWarning(
                     'UNNECESSARY_FORMULA_BREAK',
                     'Формулы <code>' + mathFragments[i-1] + '</code> и <code>' + mathFragments[i] + '</code> не разделены текстом. '
-                    + 'Возможно, следует объединить эти две формулы в одну, либо вставить вводное слово перед второй формулой. ', textFragments[i], findLine('text',i,0));
+                    + 'Возможно, следует объединить эти две формулы в одну, либо вставить вводное слово перед второй формулой. ',
+                    textFragments[i],
+                    findLine('text',i,0));
             }
         }
 
 
         for (var i = 0; i < textFragments.length; ++i) {
             var badPos = textFragments[i].search(/[?!.,;:]$/);
-            if (badPos >= 0 && i < mathFragmentTypes.length && mathFragmentTypes[i] == 'inline'){
+            if (badPos >= 0 && i < mathFragmentTypes.length && mathFragmentTypes[i] == 'inline' && textFragments[i][badPos - 1] !== "\\"){
                 addTypicalWarning('SPACE_AFTER_PUNCTUATION_MARK', 'text', i, badPos);
             }
         }
 
-        addWarningQuick('text', /[?!.,;:][АБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]/, 'SPACE_AFTER_PUNCTUATION_MARK');
+        addWarningQuick('text', /([^\\]|^)[?!.,;:][АБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]/, 'SPACE_AFTER_PUNCTUATION_MARK');
 
         /* STAGE: check for capitals after punctuation */
         addWarningQuick('text', /[,;:]\s*[АБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯ]/, 'CAPITALIZATION_AFTER_PUNCTUATION_MARK');
@@ -587,7 +590,12 @@ function initiate() {
         /* STAGE: check for period before new sentence */
         for (var i = 0; i < textFragments.length; ++i) {
             if (i > 0 && capCyrLetters.includes(textFragments[i].trim().substr(0,1)) && !mathFragments[i-1].trim().match(/\.(\s*\}*)*$/)){
-                addWarning('PERIOD_BEFORE_NEXT_SENTENCE', null, extractSnippet(mathFragments[i-1] + textFragments[i], mathFragments[i-1].length));
+                addWarning(
+                        'PERIOD_BEFORE_NEXT_SENTENCE',
+                        null,
+                        extractSnippet(textFragments[i], 0),
+                        findLine("math", i-1, mathFragments[i-1].length)
+                );
             }
         }
 
@@ -683,7 +691,7 @@ function initiate() {
 
         /* STAGE: checking if there is a decent conclusion*/
         var lastTextFragment = textFragments[textFragments.length-1].trim();
-        if ((lastTextFragment.length == 0 || lastTextFragment.match(/\\end\{(figure|enumerate|itemize|tabular)}\s*\\end\{solution}$/)) && textFragments[textFragments.length-2].search(/Ответ/i) < 0){
+        if ((lastTextFragment.length == 0 || lastTextFragment.match(/\\end\{(figure|enumerate|itemize|tabular)}\s*\\end\{solution}$/)) && (textFragments.length < 2 || textFragments[textFragments.length-2].search(/Ответ/i) < 0)){
             addWarning('NO_CONCLUSION');
         }
 
@@ -691,7 +699,7 @@ function initiate() {
         /* STAGE: check if there are sentences starting with formula */
         for (var i = 0; i < mathFragments.length; ++i) {
             if (textFragments[i].trim().endsWith('.')) {
-                addTypicalWarning('SENTENCE_STARTS_WITH_FORMULA', 'math', i, badPos);
+                addTypicalWarning('SENTENCE_STARTS_WITH_FORMULA', 'math', i, 0);
             }
         }
 
@@ -734,7 +742,7 @@ function initiate() {
 
 
         /* STAGE: check if dash is surrounded with spaces */
-        addWarningQuick('text', /--[^- ~\n]|[^- ~\n]--/, 'DASH_SURROUND_WITH_SPACES');
+        addWarningQuick('text', /--(?!([- ~\n]|(\\,)))|([^- ~,\n])--/, 'DASH_SURROUND_WITH_SPACES');
 
 
         /* STAGE: check for correct floor function notation */
@@ -791,8 +799,7 @@ function initiate() {
 
 
         /* STAGE: check sin, cos, lim, min etc. are prepended by backslash */
-        addWarningQuick('math', /([^\\]|^)(cos|csc|exp|ker|limsup|max|min|sinh|arcsin|cosh|deg|gcd|lg|ln|Pr|sup|arctan|cot|det|hom|lim|log|sec|tan|arg|coth|dim|liminf|max|sin|tanh)[^a-z]/, 'BACKSLASH_NEEDED');
-
+        addWarningQuick('math', /([^\\\w]|^)(cos|csc|exp|ker|limsup|max|min|sinh|arcsin|cosh|deg|gcd|lg|ln|Pr|sup|arctan|cot|det|hom|lim|log|sec|tan|arg|coth|dim|liminf|max|sin|tanh)(\b|_)/, 'BACKSLASH_NEEDED');
 
         /* STAGE: check if math mode is necessary */
         addWarningQuick('math', /^\s*[^0-9a-zA-Z]+\s*$/, 'UNNECESSARY_MATH_MODE');
@@ -812,7 +819,7 @@ function initiate() {
 
 
         /* Check if \limits command is used in display math */
-        addWarningQuick('math', /\\limits/, 'LIMITS_UNNECESSARY_IN_DISPLAY_MODE', 'display')
+        addWarningQuick('math', /\\limits/, 'LIMITS_UNNECESSARY_IN_DISPLAY_MODE', 'display');
 
 
         /* Check if \vdots command is used for divisibility */
