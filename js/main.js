@@ -278,6 +278,33 @@ function initiate() {
                 severity: 0
             }
         };
+
+        /* STAGE: Delete all comments */
+        latexString = latexString.replace(/%.*(?=(\n|$))/g, '');
+
+        /* STAGE: split into text and math blocks */
+        var fragments = latexString.split(/(\$\$|\\\[|\\]|\\\(|\\\)|\$(?!\$)|\\(?:begin|end)\{(?:equation|align|gather|eqnarray|multline|flalign|alignat|math)\*?})/);
+        var textFragments = [];
+        var mathFragments = [];
+        var mathFragmentTypes = [];
+        var textFragmentsRanges = [];
+        var mathFragmentsRanges = [];
+        var boundaries = [];
+        var curPos = 0;
+        for (var i = 0; i < fragments.length; ++i) {
+            if (i % 4 == 0){
+                textFragments.push(fragments[i]);
+                textFragmentsRanges.push({ start: curPos, end: curPos + fragments[i].length });
+            } else if (i % 4 == 2) {
+                mathFragments.push(fragments[i]);
+                mathFragmentsRanges.push({ start: curPos, end: curPos + fragments[i].length });
+                mathFragmentTypes.push(fragments[i-1] == '\\(' || fragments[i-1] == '$' || fragments[i-1] == '\\begin{math}' ? 'inline' : 'display' );
+            } else {
+                boundaries.push(fragments[i]);
+            }
+            curPos += fragments[i].length;
+        }
+
         var used_errcodes = {};
         if (addWarningCustom == undefined) {
             // This var will be visible to the code below.
@@ -398,9 +425,6 @@ function initiate() {
                 }
             }
         }
-
-        /* Delete all comments */
-        latexString = latexString.replace(/%.*(?=(\n|$))/g, '');
 
         /* STAGE: Check if there are no teacher fixmes left */
         var badPos = latexString.search(/\\fix\{/);
@@ -540,21 +564,6 @@ function initiate() {
         badPos = latexString.search(/\\begin\{math}/);
         if (badPos >= 0) {
             addWarning('MATH_ENVIRONMENT_VERVOSITY_WARNING', null, extractSnippet(latexString, badPos+7), findLine(badPos));;
-        }
-
-        /* STAGE: split into text and math blocks */
-        var fragments = latexString.split(/(\$\$|\\\[|\\]|\\\(|\\\)|\$(?!\$)|\\(?:begin|end)\{(?:equation|align|gather|eqnarray|multline|flalign|alignat|math)\*?})/);
-        var textFragments = [];
-        var mathFragments = [];
-        var mathFragmentTypes = [];
-        for (var i = 0; i < fragments.length; ++i){
-            if (i % 4 == 0){
-                textFragments.push(fragments[i]);
-            }
-            else if (i % 4 == 2) {
-                mathFragments.push(fragments[i]);
-                mathFragmentTypes.push(fragments[i-1] == '\\(' || fragments[i-1] == '$' || fragments[i-1] == '\\begin{math}' ? 'inline' : 'display' );
-            }
         }
 
         /* STAGE: check for neighbouring formulas */
