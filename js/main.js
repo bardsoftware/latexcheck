@@ -405,19 +405,12 @@ function initiate() {
         }
 
         function addAllTypicalWarningsInFragment(fragment, fragmentIndex, badness, errorCode, type) {
-            var badPos = 0;
-            var offset = 0;
-            var subFragment = fragment.substring(0);
-            while (true) {
-                badPos = subFragment.search(badness);
-                if (badPos >= 0) {
-                    addTypicalWarning(errorCode, type, fragmentIndex, offset + badPos);
-                    var matched = subFragment.match(badness)[0];
-                    offset += badPos + matched.length;
-                    subFragment = subFragment.substring(badPos + matched.length);
-                } else {
-                    break;
-                }
+            var regexString = badness.toString();
+            var errorRegex = new RegExp(regexString.substring(1, regexString.length - 1), "g");
+            var result = errorRegex.exec(fragment);
+            while (result !== null) {
+                addTypicalWarning(errorCode, type, fragmentIndex, result.index);
+                result = errorRegex.exec(fragment);
             }
         }
 
