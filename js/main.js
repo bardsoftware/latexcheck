@@ -621,7 +621,7 @@ function initiate() {
             for (var j = 0, k = 0; j < modifiedMathFragment.length; ++j){
                 if (modifiedMathFragment.substr(j,1) === '|'){
                     ++k;
-                    modifiedMathFragment = modifiedMathFragment.substr(0,j) + (k % 2 ? '¹' : '²') + modifiedMathFragment.substr(j+1,modifiedMathFragment.length);
+                    modifiedMathFragment = modifiedMathFragment.substring(0, j) + (k % 2 ? '¹' : '²') + modifiedMathFragment.substring(j+1, modifiedMathFragment.length);
                 }
             }
             var largeFormula = '(\\\\(frac|binom|over|underline|sum|prod|choose)|((\\)|\\\\}|])[_^]))';
@@ -754,7 +754,7 @@ function initiate() {
 
 
         /* STAGE: check if dash is surrounded with spaces */
-        addWarningQuick('text', /--(?!([- ~\n]|(\\,)))|([^- ~,\n])--/, 'DASH_SURROUND_WITH_SPACES');
+        addWarningQuick('text', /--(?!([- ~\n]|(\\,)))|([^- ~\n])--/, 'DASH_SURROUND_WITH_SPACES');
 
 
         /* STAGE: check for correct floor function notation */
