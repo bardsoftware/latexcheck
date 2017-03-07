@@ -449,6 +449,16 @@ function initiate() {
             }
         }
 
+        /* STAGE: Check if math is closed properly at the end of a document */
+        if (textFragments.length !== mathFragments.length + 1) {
+            addWarning(
+                    "MISMATCHED_MATH_DELIMITERS",
+                    "Математический режим не закрыт к концу документа",
+                    extractSnippet(latexString, mathFragmentsRanges[mathFragmentsRanges.length - 1].start),
+                    findLine(mathFragmentsRanges[mathFragmentsRanges.length - 1].start)
+            );
+        }
+
         /* STAGE: Check if there are no teacher fixmes left */
         addAllWarningsLatexString("FIXME_NOT_YET_FIXED",  /\\fix\{/g);
 
