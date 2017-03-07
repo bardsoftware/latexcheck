@@ -575,19 +575,6 @@ function initiate() {
         /* STAGE: check if letters are defined before they are used */
         addAllWarningsLatexString('MATH_ENVIRONMENT_VERVOSITY_WARNING', /\\begin\{math}/g);
 
-        /* STAGE: check for neighbouring formulas */
-        for (var i = 1; i < textFragments.length-1; ++i) {
-            if (textFragments[i].match(/^\s*$/)) {
-                addWarning(
-                    'UNNECESSARY_FORMULA_BREAK',
-                    'Формулы <code>' + mathFragments[i-1] + '</code> и <code>' + mathFragments[i] + '</code> не разделены текстом. '
-                    + 'Возможно, следует объединить эти две формулы в одну, либо вставить вводное слово перед второй формулой. ',
-                    textFragments[i],
-                    findLine('text',i,0));
-            }
-        }
-
-
         for (var i = 0; i < textFragments.length; ++i) {
             var badPos = textFragments[i].search(/[?!.,;:]$/);
             if (badPos >= 0 && i < mathFragmentTypes.length && mathFragmentTypes[i] === 'inline' && textFragments[i][badPos - 1] !== "\\"){
@@ -684,7 +671,6 @@ function initiate() {
         /* STAGE: problems with symbolic links */
         addWarningQuick("text", /((рисунок|рисунка|рисунке|рис\.)|формул(а|е|ой|у|ы)|(равенств|тождеств)(о|а|е|у|ами|ах)|(соотношени|выражени)(е|ю|и|я|ями|ях|ям))\s+\(?\d\)?/i, "SYMBOLIC_LINKS");
         addWarningQuick("text", /(\s|~)\(\d\)(\.|,?\s+[абвгдеёжзиклмнопрстуфхцчшщьыъэюя]*\W)/, "SYMBOLIC_LINKS");
-        addWarningQuick('math', /^\s*(\d+|\*)\s*$/, 'SYMBOLIC_LINKS');
 
         addWarningQuick('text', /\(\\ref\{[^}]*}\)/, 'EQREF_INSTEAD_OF_REF');
 
