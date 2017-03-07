@@ -292,13 +292,13 @@ function initiate() {
         var boundaries = [];
         var curPos = 0;
         for (var i = 0; i < fragments.length; ++i) {
-            if (i % 4 == 0){
+            if (i % 4 === 0){
                 textFragments.push(fragments[i]);
                 textFragmentsRanges.push({ start: curPos, end: curPos + fragments[i].length });
-            } else if (i % 4 == 2) {
+            } else if (i % 4 === 2) {
                 mathFragments.push(fragments[i]);
                 mathFragmentsRanges.push({ start: curPos, end: curPos + fragments[i].length });
-                mathFragmentTypes.push(fragments[i-1] == '\\(' || fragments[i-1] == '$' || fragments[i-1] == '\\begin{math}' ? 'inline' : 'display' );
+                mathFragmentTypes.push(fragments[i-1] === '\\(' || fragments[i-1] === '$' || fragments[i-1] === '\\begin{math}' ? 'inline' : 'display' );
             } else {
                 boundaries.push(fragments[i]);
             }
@@ -313,7 +313,7 @@ function initiate() {
         }
 
         function extractSnippet(fragment, position, radius) {
-            if(position === null || position === undefined){
+            if (position === null || position === undefined){
                 return fragment;
             }
             radius = radius != undefined ? radius : 5;
@@ -343,7 +343,7 @@ function initiate() {
         }
 
         function findLine(fragmentType, fragmentIndex, positionInFragment) {
-            if(fragmentIndex === undefined){
+            if (fragmentIndex === undefined){
                 var globalPosition = fragmentType;
                 return latexString.substring(0, globalPosition).split('\n').length;
             }
@@ -353,7 +353,7 @@ function initiate() {
                 numLinesSkipped += mathFragments[i].split('\n').length - 1;
                 numLinesSkipped += textFragments[i].split('\n').length - 1;
             }
-            if(fragmentType == 'math'){
+            if (fragmentType === 'math'){
                 numLinesSkipped += textFragments[fragmentIndex].split('\n').length - 1;
                 numLinesSkipped += mathFragments[i].substring(0,positionInFragment).split('\n').length - 1;
             }
@@ -372,7 +372,7 @@ function initiate() {
                         + '</div>';
             }
 
-            if(used_errcodes[errorCode] == undefined) {
+            if (used_errcodes[errorCode] == undefined) {
                 var severity = errors[errorCode].severity.toString();
                 rda.html(rda.html() + '<div class="well well-sm severity' + severity + '" id="' + errorCode + '" data-severity="' + severity +'">' + (extraInfo != undefined ? extraInfo : errors[errorCode].msg) + '</div>');
                 used_errcodes[errorCode] = $('#' + errorCode);
@@ -393,7 +393,7 @@ function initiate() {
                     errorCode,
                     null,
                     extractSnippet(
-                            (fragmentType == 'math' ? mathFragments : textFragments)[fragmentIndex],
+                            (fragmentType === 'math' ? mathFragments : textFragments)[fragmentIndex],
                             positionInFragment
                     ),
                     findLine(
@@ -422,9 +422,9 @@ function initiate() {
         }
 
         function addWarningQuick(fragmentType, badness, errorCode, mathFragmentType) {
-            if(fragmentType == 'math') {
+            if (fragmentType === 'math') {
                 for (var i = 0; i < mathFragments.length; ++i) {
-                    if( mathFragmentType && mathFragmentType != mathFragmentTypes[i] ) {
+                    if (mathFragmentType != undefined && mathFragmentType !== mathFragmentTypes[i] ) {
                         continue;
                     }
                     addAllTypicalWarningsInFragment(mathFragments[i], i, badness, errorCode, 'math');
@@ -462,9 +462,9 @@ function initiate() {
         while (i < latexString.length){
             var nextTwoSymbols = latexString.substr(i,2);
             var nextSymbol = latexString.substr(i,1);
-            if (nextTwoSymbols == '$$'){
+            if (nextTwoSymbols === '$$'){
                 if (currentlyInMathMode){
-                    if (lastSeenBrace != '$$'){
+                    if (lastSeenBrace !== '$$'){
                         addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
                             'Команда <code>' + nextTwoSymbols + '</code> встречена в математическом режиме, открытом ранее командой <code>' + lastSeenBrace + '</code>',
@@ -506,7 +506,7 @@ function initiate() {
                     );
                     break;
                 }
-                if (nextTwoSymbols == '\\]' && lastSeenBrace != '\\[' || nextTwoSymbols == '\\)' && lastSeenBrace != '\\(' ) {
+                if (nextTwoSymbols === '\\]' && lastSeenBrace !== '\\[' || nextTwoSymbols === '\\)' && lastSeenBrace !== '\\(' ) {
                     addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
                             'Математический режим был открыт командой <code>' + lastSeenBrace + '</code>, а закрыт командой <code>' + nextTwoSymbols + '</code>',
@@ -519,11 +519,11 @@ function initiate() {
                 currentlyInMathMode = false;
                 i += 2;
             }
-            else if (nextTwoSymbols == '\\') {
+            else if (nextTwoSymbols === '\\') {
                 i += 2;
             }
-            else if (nextSymbol == '$'){
-                if(currentlyInMathMode && lastSeenBrace != '$') {
+            else if (nextSymbol === '$'){
+                if (currentlyInMathMode && lastSeenBrace !== '$') {
                     addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
                             'Математический режим был открыт командой <code>' + lastSeenBrace + '</code>, а закрыт командой <code>$</code>',
@@ -532,7 +532,7 @@ function initiate() {
                     );
                     break;
                 }
-                if(!currentlyInMathMode){
+                if (!currentlyInMathMode){
                     currentlyInMathMode = true;
                     lastSeenBrace = '$';
                 }
@@ -590,7 +590,7 @@ function initiate() {
 
         for (var i = 0; i < textFragments.length; ++i) {
             var badPos = textFragments[i].search(/[?!.,;:]$/);
-            if (badPos >= 0 && i < mathFragmentTypes.length && mathFragmentTypes[i] == 'inline' && textFragments[i][badPos - 1] !== "\\"){
+            if (badPos >= 0 && i < mathFragmentTypes.length && mathFragmentTypes[i] === 'inline' && textFragments[i][badPos - 1] !== "\\"){
                 addTypicalWarning('SPACE_AFTER_PUNCTUATION_MARK', 'text', i, badPos);
             }
         }
@@ -623,13 +623,13 @@ function initiate() {
 
         /* STAGE: check for \left-\right commands */
         for (var i = 0; i < mathFragments.length; ++i) {
-            if(mathFragmentTypes[i] != 'display' && !mathFragments[i].match(/\\displaystyle/)){
+            if (mathFragmentTypes[i] !== 'display' && !mathFragments[i].match(/\\displaystyle/)){
                 continue;
             }
 
             var modifiedMathFragment = mathFragments[i];
             for (var j = 0, k = 0; j < modifiedMathFragment.length; ++j){
-                if (modifiedMathFragment.substr(j,1) == '|'){
+                if (modifiedMathFragment.substr(j,1) === '|'){
                     ++k;
                     modifiedMathFragment = modifiedMathFragment.substr(0,j) + (k % 2 ? '¹' : '²') + modifiedMathFragment.substr(j+1,modifiedMathFragment.length);
                 }
@@ -714,7 +714,7 @@ function initiate() {
 
         /* STAGE: checking if there is a decent conclusion*/
         var lastTextFragment = textFragments[textFragments.length-1].trim();
-        if ((lastTextFragment.length == 0 || lastTextFragment.match(/\\end\{(figure|enumerate|itemize|tabular)}\s*\\end\{solution}$/)) && (textFragments.length < 2 || textFragments[textFragments.length-2].search(/Ответ/i) < 0)){
+        if ((lastTextFragment.length === 0 || lastTextFragment.match(/\\end\{(figure|enumerate|itemize|tabular)}\s*\\end\{solution}$/)) && (textFragments.length < 2 || textFragments[textFragments.length-2].search(/Ответ/i) < 0)){
             addWarning('NO_CONCLUSION');
         }
 
@@ -730,7 +730,7 @@ function initiate() {
         /* STAGE: check if there's no punctuation marks right after display math */
         for (var i = 0; i < textFragments.length; ++i) {
             var badPos = textFragments[i].search(/^\s*[,.!?:;]/);
-            if (badPos >= 0 && i > 0 && mathFragmentTypes[i-1] == 'display') {
+            if (badPos >= 0 && i > 0 && mathFragmentTypes[i-1] === 'display') {
                 addTypicalWarning('PUNCTUATION_AFTER_DISPLAY_MATH', 'text', i, badPos);
             }
         }
@@ -861,7 +861,7 @@ function initiate() {
         addWarningQuick('text', /\( /, 'SPACE_AFTER_PARENTHESIS');
 
 
-        if (addWarningCustom == undefined && rda.html() == '') {
+        if (addWarningCustom == undefined && rda.html() === '') {
             rda.text('Замечательный результат: автоматическая проверка пройдена без замечаний.');
         }
     }
