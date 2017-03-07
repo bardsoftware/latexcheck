@@ -481,7 +481,7 @@ function initiate() {
                              extractSnippet(latexString, i),
                              currentLine
                         );
-                        break;
+                        return;
                     }
                     currentlyInMathMode = false;
                     lastSeenBrace = '';
@@ -500,7 +500,7 @@ function initiate() {
                              extractSnippet(latexString, i),
                              currentLine
                     );
-                    break;
+                    return;
                 }
                 lastSeenBrace = nextTwoSymbols;
                 currentlyInMathMode = true;
@@ -514,7 +514,7 @@ function initiate() {
                              extractSnippet(latexString, i),
                              currentLine
                     );
-                    break;
+                    return;
                 }
                 if (nextTwoSymbols === '\\]' && lastSeenBrace !== '\\[' || nextTwoSymbols === '\\)' && lastSeenBrace !== '\\(' ) {
                     addWarning(
@@ -523,7 +523,7 @@ function initiate() {
                              extractSnippet(latexString, i),
                              currentLine
                     );
-                    break;
+                    return;
                 }
                 lastSeenBrace = '';
                 currentlyInMathMode = false;
@@ -540,7 +540,7 @@ function initiate() {
                              extractSnippet(latexString, i),
                              currentLine
                     );
-                    break;
+                    return;
                 }
                 if (!currentlyInMathMode){
                     currentlyInMathMode = true;
