@@ -404,39 +404,56 @@ function initiate() {
             );
         }
 
+        function addAllTypicalWarningsInFragment(fragment, fragmentIndex, badness, errorCode, type) {
+            var badPos = 0;
+            var offset = 0;
+            var subFragment = fragment.substring(0);
+            while (true) {
+                badPos = subFragment.search(badness);
+                if (badPos >= 0) {
+                    addTypicalWarning(errorCode, type, fragmentIndex, offset + badPos);
+                    var matched = subFragment.match(badness)[0];
+                    offset += badPos + matched.length;
+                    subFragment = subFragment.substring(badPos + matched.length);
+                } else {
+                    break;
+                }
+            }
+        }
+
         function addWarningQuick(fragmentType, badness, errorCode, mathFragmentType) {
             if(fragmentType == 'math') {
                 for (var i = 0; i < mathFragments.length; ++i) {
                     if( mathFragmentType && mathFragmentType != mathFragmentTypes[i] ) {
                         continue;
                     }
-                    var badPos = mathFragments[i].search(badness);
-                    if (badPos >= 0){
-                        addTypicalWarning(errorCode, 'math', i, badPos);
-                    }
+                    addAllTypicalWarningsInFragment(mathFragments[i], i, badness, errorCode, 'math');
                 }
             }
             else {
                 for (var i = 0; i < textFragments.length; ++i) {
-                    var badPos = textFragments[i].search(badness);
-                    if (badPos >= 0){
-                        addTypicalWarning(errorCode, 'text', i, badPos);
-                    }
+                    addAllTypicalWarningsInFragment(textFragments[i], i, badness, errorCode, 'text');
                 }
             }
         }
 
-        /* STAGE: Check if there are no teacher fixmes left */
-        var badPos = latexString.search(/\\fix\{/);
-        if (badPos >= 0){
-            addWarning('FIXME_NOT_YET_FIXED', null, '\\fix{', latexString.substring(0,badPos).split('\n').length-1);
+        function addAllWarningsLatexString(errorCode, errorRegex) {
+            if (!errorRegex.flags.includes("g")) {
+                var errorRegexString = errorRegex.toString().substring(1, errorRegex.toString().length - 1);
+                errorRegex = new RegExp(errorRegexString, "g");
+            }
+            var result = errorRegex.exec(latexString);
+            while (result !== null) {
+                addWarning(errorCode, null, extractSnippet(latexString, result.index, 10), findLine(result.index));
+                result = errorRegex.exec(latexString);
+            }
         }
 
+        /* STAGE: Check if there are no teacher fixmes left */
+        addAllWarningsLatexString("FIXME_NOT_YET_FIXED",  /\\fix\{/g);
+
         /* STAGE: Check math delimiters */
-        badPos = latexString.search(/\${2}/);
-        if (badPos >= 0){
-            addWarning('DOUBLE_DOLLARS', null, '$$', latexString.substring(0,badPos).split('\n').length-1);
-        }
+        addAllWarningsLatexString("DOUBLE_DOLLARS", /\${2}/g);
 
         var i = 0;
         var currentlyInMathMode = false;
@@ -515,56 +532,29 @@ function initiate() {
         }
 
         /* STAGE: check if math formulae are not split without necessity */
-        var badPos = latexString.search(/(\$(?!\$)|\\\)|\$\$)\s*(,|=|\+|-)?\s*(\$(?!\$)|\\\()/);
-        if ( badPos >= 0) {
-            addWarning('UNNECESSARY_FORMULA_BREAK', null, extractSnippet(latexString, badPos, 10), findLine(badPos));
-        }
+        addAllWarningsLatexString('UNNECESSARY_FORMULA_BREAK', /(\$(?!\$)|\\\)|\$\$)\s*(,|=|\+|-)?\s*(\$(?!\$)|\\\()/g);
 
         /* STAGE: check for low-level font commands */
-        badPos = latexString.search(/\\it[^a-z0-9]|\\bf[^a-z0-9]/);
-        if (badPos >= 0) {
-            addWarning('LOW_LEVEL_FONT_COMMANDS', null, extractSnippet(latexString, badPos), findLine(badPos));
-        }
+        addAllWarningsLatexString('LOW_LEVEL_FONT_COMMANDS', /\\it[^a-z0-9]|\\bf[^a-z0-9]/g);
 
-        badPos = latexString.search(/\\textit/);
-        if (badPos >= 0) {
-            addWarning('ITALIC_INSTEAD_OF_EMPH', null, extractSnippet(latexString, badPos), findLine(badPos));
-        }
+        addAllWarningsLatexString('ITALIC_INSTEAD_OF_EMPH', /\\textit/g);
 
-        badPos = latexString.search(/\\](\s|[^абвгдеёжзиклмнопрстуфхцчшщьыъэюя])*\\\[/i);
-        if (badPos >= 0) {
-            addWarning('CONSECUTIVE_DISPLAY_FORMULAE', null, extractSnippet(latexString, badPos), findLine(badPos+3));
-        }
+        addAllWarningsLatexString('CONSECUTIVE_DISPLAY_FORMULAE', /\\](\s|[^абвгдеёжзиклмнопрстуфхцчшщьыъэюя])*\\\[/ig);
 
         /* STAGE: Check for \mbox and \hbox */
-        badPos = latexString.search(/\\(m|h)box/);
-        if (badPos >= 0) {
-            addWarning('REPLACE_MBOX_WITH_TEXT', null, extractSnippet(latexString, badPos));
-        }
+        addAllWarningsLatexString('REPLACE_MBOX_WITH_TEXT', /\\(m|h)box/);
 
         /* STAGE: check if paragraph starts with a formula */
-        badPos = latexString.search(/(\n\s*\n|\\par)\s*(\$|\\\()/);
-        if (badPos >= 0) {
-            addWarning('PARAGRAPH_STARTS_WITH_FORMULA', null, extractSnippet(latexString, badPos), findLine(badPos));;
-        }
+        addAllWarningsLatexString('PARAGRAPH_STARTS_WITH_FORMULA', /(\n\s*\n|\\par|^)\s*(\$|\\\()/g);
 
         /* STAGE: check if numerals are properly abbreviated */
-        badPos = latexString.search(/(\\\)|\$)?\s*-{1,3}\s*(ый|ого|о|тому|ому|ему|ом|ая|ой|ую|ые|ых|ыми|и|ым|тым|той|им|его|того|тых|ых|том|ем|ём|ех|ёх|ух)([^абвгдеёжзиклмнопрстуфхцчшщьыъэюя]|$)/i);
-        if (badPos >= 0) {
-            addWarning('NUMERAL_ABBREVIATION', null, extractSnippet(latexString, badPos), findLine(badPos));;
-        }
+        addAllWarningsLatexString('NUMERAL_ABBREVIATION', /(\\\)|\$)?\s*-{1,3}\s*(ый|ого|о|тому|ому|ему|ом|ая|ой|ую|ые|ых|ыми|и|ым|тым|той|им|его|того|тых|ых|том|ем|ём|ех|ёх|ух)([^абвгдеёжзиклмнопрстуфхцчшщьыъэюя]|$)/ig);
 
         /* STAGE: check if letters are defined before they are used */
-        badPos = latexString.search(/,(\\]|\$)?\s+где([^абвгдеёжзиклмнопрстуфхцчшщьыъэюя]|$)/i);
-        if (badPos >= 0) {
-            addWarning('LATE_DEFINITION', null, extractSnippet(latexString, badPos), findLine(badPos));;
-        }
+        addAllWarningsLatexString('LATE_DEFINITION', /,(\\]|\$)?\s+где([^абвгдеёжзиклмнопрстуфхцчшщьыъэюя]|$)/ig);
 
         /* STAGE: check if letters are defined before they are used */
-        badPos = latexString.search(/\\begin\{math}/);
-        if (badPos >= 0) {
-            addWarning('MATH_ENVIRONMENT_VERVOSITY_WARNING', null, extractSnippet(latexString, badPos+7), findLine(badPos));;
-        }
+        addAllWarningsLatexString('MATH_ENVIRONMENT_VERVOSITY_WARNING', /\\begin\{math}/g);
 
         /* STAGE: check for neighbouring formulas */
         for (var i = 1; i < textFragments.length-1; ++i) {
@@ -646,31 +636,31 @@ function initiate() {
 
         /* STAGE: bar used instead of \mid in set comprehension */
         for (var i = 0; i < mathFragments.length; ++i) {
-            var badMatch = mathFragments[i].match(/\\\{.*?\|.*?\\}/);
-            if (badMatch && !badMatch[0].includes('\\mid')){
-                addWarning('MID_IN_SET_COMPREHENSION', null, badMatch[0]);
+            var errorRegex = /\\\{.*?\|.*?\\}/g;
+            var result = errorRegex.exec(mathFragments[i]);
+            while (result !== null) {
+                if (!result[0].includes("\\mid")) {
+                    addWarning("MID_IN_SET_COMPREHENSION", null, result[0], findLine("math", i, result.index));
+                }
+                result = errorRegex.exec(mathFragments[i]);
             }
         }
 
         /* STAGE: \mid used instead of bar */
         for (var i = 0; i < mathFragments.length; ++i) {
-            var badMatch = mathFragments[i].match(/\\mid.*?\\mid/);
-            if (badMatch && !badMatch[0].includes('\\}')){
-                addWarning('MID_IN_SET_COMPREHENSION', null, badMatch[0]);
+            var errorRegex = /\\mid.*?\\mid/g;
+            var result = errorRegex.exec(mathFragments[i]);
+            while (result !== null) {
+                if (!result[0].includes("\\}")) {
+                    addWarning("MID_IN_SET_COMPREHENSION", null, result[0], findLine("math", i, result.index));
+                }
+                result = errorRegex.exec(mathFragments[i]);
             }
         }
 
         /* STAGE: problems with symbolic links */
-        for (var i = 0; i < textFragments.length; ++i) {
-            var badPos = textFragments[i].search(/((рисунок|рисунка|рисунке|рис\.)|формул(а|е|ой|у|ы)|(равенств|тождеств)(о|а|е|у|ами|ах)|(соотношени|выражени)(е|ю|и|я|ями|ях|ям))\s+\(?\d\)?/i);
-            if (badPos < 0) {
-                badPos = textFragments[i].search(/(\s|~)\(\d\)(\.|,?\s+[абвгдеёжзиклмнопрстуфхцчшщьыъэюя]*\W)/);
-            }
-            if(badPos >= 0) {
-                addTypicalWarning('SYMBOLIC_LINKS', 'text', i, badPos);
-            }
-        }
-
+        addWarningQuick("text", /((рисунок|рисунка|рисунке|рис\.)|формул(а|е|ой|у|ы)|(равенств|тождеств)(о|а|е|у|ами|ах)|(соотношени|выражени)(е|ю|и|я|ями|ях|ям))\s+\(?\d\)?/i, "SYMBOLIC_LINKS");
+        addWarningQuick("text", /(\s|~)\(\d\)(\.|,?\s+[абвгдеёжзиклмнопрстуфхцчшщьыъэюя]*\W)/, "SYMBOLIC_LINKS");
         addWarningQuick('math', /^\s*(\d+|\*)\s*$/, 'SYMBOLIC_LINKS');
 
         addWarningQuick('text', /\(\\ref\{[^}]*}\)/, 'EQREF_INSTEAD_OF_REF');
@@ -689,12 +679,13 @@ function initiate() {
 
         /* STAGE: Text in math mode */
         for (var i = 0; i < mathFragments.length; ++i) {
-            var badPos = mathFragments[i].search(new RegExp('[' + smallCyrLetters + capCyrLetters + ']'));
-            if (badPos < 0){
-                badPos = mathFragments[i].search(/([^a-z\\]|^)[a-z]{4,}/i);
-            }
-            if (badPos >= 0 && mathFragments[i].search(/\\(text|mbox|hbox)/) < 0 && mathFragments[i].substr(0, badPos).search(/\\label/) < 0) {
-                addTypicalWarning('TEXT_IN_MATH_MODE', 'math', i, badPos);
+            var errorRegex = /(?:[^a-z\\{]|^)[a-zАБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]{4,}/ig;
+            var result = errorRegex.exec(mathFragments[i]);
+            while (result !== null) {
+                if (!/\\(text|mbox|hbox|label)\s*\{(?!.*?\})/.test(mathFragments[i].substring(0, result.index))) {
+                    addTypicalWarning('TEXT_IN_MATH_MODE', 'math', i, result.index);
+                }
+                result = errorRegex.exec(mathFragments[i]);
             }
         }
 
