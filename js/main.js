@@ -548,7 +548,6 @@ function initiate() {
                 }
                 i += 1;
             }
-
         }
 
         /* STAGE: check if math formulae are not split without necessity */
@@ -608,7 +607,11 @@ function initiate() {
 
         /* STAGE: check for period before new sentence */
         for (var i = 0; i < textFragments.length; ++i) {
-            if (i > 0 && capCyrLetters.includes(textFragments[i].trim().substr(0,1)) && !mathFragments[i-1].trim().match(/\.(\s*\}*)*$/)){
+            if (i > 0 &&
+                    textFragments[i].trim().length > 0 &&
+                    capCyrLetters.includes(textFragments[i].trim().substr(0,1)) &&
+                    !mathFragments[i-1].trim().match(/\.(\s*\}*)*$/)) {
+
                 addWarning(
                         'PERIOD_BEFORE_NEXT_SENTENCE',
                         null,
@@ -628,7 +631,7 @@ function initiate() {
             for (var j = 0, k = 0; j < modifiedMathFragment.length; ++j){
                 if (modifiedMathFragment.substr(j,1) == '|'){
                     ++k;
-                    modifiedMathFragment = modifiedMathFragment.substr(0,j) + (k % 2 ? '¹' : '²') + modifiedMathFragment.substr(j+1,modifiedMathFragment.length)
+                    modifiedMathFragment = modifiedMathFragment.substr(0,j) + (k % 2 ? '¹' : '²') + modifiedMathFragment.substr(j+1,modifiedMathFragment.length);
                 }
             }
             var largeFormula = '(\\\\(frac|binom|over|underline|sum|prod|choose)|((\\)|\\\\}|])[_^]))';
