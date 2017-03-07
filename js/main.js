@@ -456,6 +456,7 @@ function initiate() {
         addAllWarningsLatexString("DOUBLE_DOLLARS", /\${2}/g);
 
         var i = 0;
+        var currentLine = 0;
         var currentlyInMathMode = false;
         var lastSeenBrace = '';
         while (i < latexString.length){
@@ -466,7 +467,10 @@ function initiate() {
                     if (lastSeenBrace != '$$'){
                         addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
-                            'Команда <code>' + nextTwoSymbols + '</code> встречена в математическом режиме, открытом ранее командой <code>' + lastSeenBrace + '</code>');
+                            'Команда <code>' + nextTwoSymbols + '</code> встречена в математическом режиме, открытом ранее командой <code>' + lastSeenBrace + '</code>',
+                             extractSnippet(latexString, i),
+                             currentLine
+                        );
                         break;
                     }
                     currentlyInMathMode = false;
@@ -482,7 +486,10 @@ function initiate() {
                 if (currentlyInMathMode){
                     addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
-                            'Команда <code>' + nextTwoSymbols + '</code> встречена в математическом режиме, открытом ранее командой <code>' + lastSeenBrace + '</code>');
+                            'Команда <code>' + nextTwoSymbols + '</code> встречена в математическом режиме, открытом ранее командой <code>' + lastSeenBrace + '</code>',
+                             extractSnippet(latexString, i),
+                             currentLine
+                    );
                     break;
                 }
                 lastSeenBrace = nextTwoSymbols;
@@ -493,13 +500,19 @@ function initiate() {
                 if (!currentlyInMathMode){
                     addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
-                            'Команда <code>' + nextTwoSymbols + '</code> встречена в текстовом режиме, а должна была закрывать математический.');
+                            'Команда <code>' + nextTwoSymbols + '</code> встречена в текстовом режиме, а должна была закрывать математический.',
+                             extractSnippet(latexString, i),
+                             currentLine
+                    );
                     break;
                 }
                 if (nextTwoSymbols == '\\]' && lastSeenBrace != '\\[' || nextTwoSymbols == '\\)' && lastSeenBrace != '\\(' ) {
                     addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
-                            'Математический режим был открыт командой <code>' + lastSeenBrace + '</code>, а закрыт командой <code>' + nextTwoSymbols + '</code>');
+                            'Математический режим был открыт командой <code>' + lastSeenBrace + '</code>, а закрыт командой <code>' + nextTwoSymbols + '</code>',
+                             extractSnippet(latexString, i),
+                             currentLine
+                    );
                     break;
                 }
                 lastSeenBrace = '';
@@ -513,7 +526,10 @@ function initiate() {
                 if(currentlyInMathMode && lastSeenBrace != '$') {
                     addWarning(
                             'MISMATCHED_MATH_DELIMITERS',
-                            'Математический режим был открыт командой <code>' + lastSeenBrace + '</code>, а закрыт командой <code>$</code>');
+                            'Математический режим был открыт командой <code>' + lastSeenBrace + '</code>, а закрыт командой <code>$</code>',
+                             extractSnippet(latexString, i),
+                             currentLine
+                    );
                     break;
                 }
                 if(!currentlyInMathMode){
@@ -527,8 +543,12 @@ function initiate() {
                 i += 1;
             }
             else{
+                if (nextSymbol === '\n') {
+                    currentLine += 1;
+                }
                 i += 1;
             }
+
         }
 
         /* STAGE: check if math formulae are not split without necessity */
