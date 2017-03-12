@@ -280,10 +280,25 @@ function initiate() {
         };
 
         /* STAGE: Delete all comments */
-        latexString = latexString.replace(/%.*(?=(\n|$))/g, '');
+        var newLatexString = "";
+        var lastIndex = 0;
+        var percentIndex = latexString.indexOf("%", lastIndex);
+        while (lastIndex !== -1 && percentIndex !== -1) {
+            if (latexString[percentIndex - 1] !== "\\") {
+                newLatexString += latexString.substring(lastIndex, percentIndex);
+                lastIndex = latexString.indexOf("\n", percentIndex + 1);
+                percentIndex = latexString.indexOf("%", lastIndex);
+            } else {
+                percentIndex = latexString.indexOf("%", percentIndex + 1);
+            }
+        }
+        if (lastIndex !== -1) {
+            newLatexString += latexString.substring(lastIndex);
+        }
+        latexString = newLatexString;
 
         /* STAGE: split into text and math blocks */
-        var fragments = latexString.split(/(\$\$|\\\[|\\]|\\\(|\\\)|\$(?!\$)|\\(?:begin|end)\{(?:equation|align|gather|eqnarray|multline|flalign|alignat|math)\*?})/);
+        var fragments = latexString.split(/(\$\$|\\\[|\\]|\\\(|\\\)|\$|\\(?:begin|end)\{(?:equation|align|gather|eqnarray|multline|flalign|alignat|math)\*?})/);
         var textFragments = [];
         var mathFragments = [];
         var mathFragmentTypes = [];
@@ -404,9 +419,12 @@ function initiate() {
             );
         }
 
-        function addAllTypicalWarningsInFragment(fragment, fragmentIndex, badness, errorCode, type) {
-            var regexString = badness.toString();
-            var errorRegex = new RegExp(regexString.substring(1, regexString.length - 1), "g");
+        function addAllTypicalWarningsInFragment(fragment, fragmentIndex, errorRegex, errorCode, type) {
+            if (!(errorRegex instanceof RegExp)) {
+                throw new Error("errorRegex is not a RegExp");
+            }
+            var regexString = errorRegex.toString();
+            errorRegex = new RegExp(regexString.substring(1, regexString.length - 1), "g");
             var result = errorRegex.exec(fragment);
             while (result !== null) {
                 addTypicalWarning(errorCode, type, fragmentIndex, result.index);
@@ -554,7 +572,7 @@ function initiate() {
         }
 
         /* STAGE: check if math formulae are not split without necessity */
-        addAllWarningsLatexString('UNNECESSARY_FORMULA_BREAK', /(\$(?!\$)|\\\)|\$\$)\s*(,|=|\+|-)?\s*(\$(?!\$)|\\\()/g);
+        addAllWarningsLatexString('UNNECESSARY_FORMULA_BREAK', /(\$(?!\$)|\\\)|\$\$)\s*(,|=|\+|-)?\s*(\$(?!\$)|\\\(|\$\$)/g);
 
         /* STAGE: check for low-level font commands */
         addAllWarningsLatexString('LOW_LEVEL_FONT_COMMANDS', /\\it[^a-z0-9]|\\bf[^a-z0-9]/g);
@@ -648,8 +666,8 @@ function initiate() {
         }
 
         /* STAGE: bar used instead of \mid in set comprehension */
+        var errorRegex = /\\\{.*?\|.*?\\}/g;
         for (var i = 0; i < mathFragments.length; ++i) {
-            var errorRegex = /\\\{.*?\|.*?\\}/g;
             var result = errorRegex.exec(mathFragments[i]);
             while (result !== null) {
                 if (!result[0].includes("\\mid")) {
@@ -660,8 +678,8 @@ function initiate() {
         }
 
         /* STAGE: \mid used instead of bar */
+        var errorRegex = /\\mid.*?\\mid/g;
         for (var i = 0; i < mathFragments.length; ++i) {
-            var errorRegex = /\\mid.*?\\mid/g;
             var result = errorRegex.exec(mathFragments[i]);
             while (result !== null) {
                 if (!result[0].includes("\\}")) {
@@ -690,11 +708,11 @@ function initiate() {
 
 
         /* STAGE: Text in math mode */
+        var errorRegex = /(?:[^a-z\\{]|^)[a-zАБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]{4,}/ig;
         for (var i = 0; i < mathFragments.length; ++i) {
-            var errorRegex = /(?:[^a-z\\{]|^)[a-zАБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]{4,}/ig;
             var result = errorRegex.exec(mathFragments[i]);
             while (result !== null) {
-                if (!/\\(text|mbox|hbox|label)\s*\{(?!.*?\})/.test(mathFragments[i].substring(0, result.index))) {
+                if (!/\\(text|mbox|hbox|label)\s*\{[^\}]$/.test(mathFragments[i].substring(0, result.index))) {
                     addTypicalWarning('TEXT_IN_MATH_MODE', 'math', i, result.index);
                 }
                 result = errorRegex.exec(mathFragments[i]);
@@ -750,7 +768,7 @@ function initiate() {
         addWarningQuick('math', /-$/, 'DASH_IN_MATH_MODE');
 
         /* STAGE: check if hyphen is used where dash should be */
-        addWarningQuick('text', ' - ', 'DASH_HYPHEN');
+        addWarningQuick('text', / - /, 'DASH_HYPHEN');
 
 
         /* STAGE: check if dash is surrounded with spaces */
