@@ -331,9 +331,9 @@ function initiate() {
             if (position === null || position === undefined){
                 return fragment;
             }
-            radius = radius != undefined ? radius : 5;
-            var left = Math.max(0, position-5);
-            var right = Math.min(fragment.length-1, position+5);
+            radius = radius != undefined ? radius : 10;
+            var left = Math.max(0, position - radius);
+            var right = Math.min(fragment.length - 1, position + radius);
             if (isWordSymbol(fragment.substr(left, 1))) {
                 while (left > 0 && isWordSymbol(fragment.substr(left-1, 1))) {
                     --left;
@@ -419,12 +419,19 @@ function initiate() {
             );
         }
 
-        function addAllTypicalWarningsInFragment(fragment, fragmentIndex, errorRegex, errorCode, type) {
-            if (!(errorRegex instanceof RegExp)) {
-                throw new Error("errorRegex is not a RegExp");
+        function getGlobalRegexp(regexp) {
+            if (regexp.flags.includes("g")) {
+                return regexp;
             }
-            var regexString = errorRegex.toString();
-            errorRegex = new RegExp(regexString.substring(1, regexString.length - 1), "g");
+            if (!(regexp instanceof RegExp)) {
+                throw new Error("regexp is not an instance of RegExp");
+            }
+            var regexString = regexp.toString();
+            return new RegExp(regexString.substring(1, regexString.length - 1 - regexp.flags.length), regexp.flags + "g");
+        }
+
+        function addAllTypicalWarningsInFragment(fragment, fragmentIndex, errorRegex, errorCode, type) {
+            errorRegex = getGlobalRegexp(errorRegex);
             var result = errorRegex.exec(fragment);
             while (result !== null) {
                 addTypicalWarning(errorCode, type, fragmentIndex, result.index);
@@ -449,10 +456,7 @@ function initiate() {
         }
 
         function addAllWarningsLatexString(errorCode, errorRegex) {
-            if (!errorRegex.flags.includes("g")) {
-                var errorRegexString = errorRegex.toString().substring(1, errorRegex.toString().length - 1);
-                errorRegex = new RegExp(errorRegexString, "g");
-            }
+            errorRegex = getGlobalRegexp(errorRegex);
             var result = errorRegex.exec(latexString);
             while (result !== null) {
                 addWarning(errorCode, null, extractSnippet(latexString, result.index, 10), findLine(result.index));
@@ -690,8 +694,7 @@ function initiate() {
         }
 
         /* STAGE: problems with symbolic links */
-        addWarningQuick("text", /((рисунок|рисунка|рисунке|рис\.)|формул(а|е|ой|у|ы)|(равенств|тождеств)(о|а|е|у|ами|ах)|(соотношени|выражени)(е|ю|и|я|ями|ях|ям))\s+\(?\d\)?/i, "SYMBOLIC_LINKS");
-        addWarningQuick("text", /(\s|~)\(\d\)(\.|,?\s+[абвгдеёжзиклмнопрстуфхцчшщьыъэюя]*\W)/, "SYMBOLIC_LINKS");
+        addWarningQuick("text", /(((рисунок|рисунка|рисунке|рис\.)|формул(а|е|ой|у|ы)|(равенств|тождеств)(о|а|е|у|ами|ах)|(соотношени|выражени)(е|ю|и|я|ями|ях|ям))\s+\(?\d\)?)|((\s|~)\(\d\)(\.|,?\s+[абвгдеёжзиклмнопрстуфхцчшщьыъэюя]*\W))/i, "SYMBOLIC_LINKS");
 
         addWarningQuick('text', /\(\\ref\{[^}]*}\)/, 'EQREF_INSTEAD_OF_REF');
 
@@ -708,7 +711,7 @@ function initiate() {
 
 
         /* STAGE: Text in math mode */
-        var errorRegex = /(?:[^a-z\\{]|^)[a-zАБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]{4,}/ig;
+        var errorRegex = /(?:[^a-z\\]|^)[a-zАБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдеёжзиклмнопрстуфхцчшщьыъэюя]{4,}/ig;
         for (var i = 0; i < mathFragments.length; ++i) {
             var result = errorRegex.exec(mathFragments[i]);
             while (result !== null) {
